@@ -24,7 +24,7 @@ jobs:
           python -m venv .venv
           . .venv/bin/activate
           pip install --upgrade pip
-          pip install bandit networkx ruamel.yaml
+          pip install bandit networkx ruamel.yaml typer jschema-to-python sarif-om
 
       - name: Run Bandit scan
         id: bandit
