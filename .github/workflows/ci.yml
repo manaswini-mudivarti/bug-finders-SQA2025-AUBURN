@@ -41,7 +41,7 @@ jobs:
           python fuzz.py
 
       - name: Upload fuzz report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: fuzz-csv
           path: fuzz.csv
