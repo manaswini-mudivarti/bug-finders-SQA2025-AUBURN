@@ -2,22 +2,26 @@
 import ast, os
 import networkx as nx
 
-# Directories to skip entirely
-SKIP_DIRS = {'env', '.venv', 'venv', '__pycache__', '.git'}
+# Directories or files to skip
+SKIP_DIRS  = {'.git', '__pycache__', 'env', '.venv', 'venv', '.github'}
+SKIP_FILES = lambda fname: fname.startswith('TEST_')
 
 def find_py_files(root="."):
     for dirpath, dirnames, filenames in os.walk(root):
         # prune unwanted dirs
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
         for fname in filenames:
-            if fname.endswith(".py"):
-                yield os.path.join(dirpath, fname)
+            if not fname.endswith(".py"): 
+                continue
+            if SKIP_FILES(fname):
+                continue
+            yield os.path.join(dirpath, fname)
 
 def build_call_graph(root="."):
     G = nx.DiGraph()
-    defs = {}  # fullname → filepath
+    defs = {}
 
-    # 1) Collect function definitions
+    # 1) collect all defs
     for path in find_py_files(root):
         try:
             src = open(path, encoding="utf-8").read()
@@ -25,14 +29,14 @@ def build_call_graph(root="."):
         except (SyntaxError, UnicodeDecodeError):
             continue
 
-        module = os.path.relpath(path, root).replace(os.sep, ".")[:-3]  # strip .py
+        module = os.path.relpath(path, root).replace(os.sep, ".")[:-3]
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef):
                 fq = f"{module}.{node.name}"
                 defs[fq] = path
                 G.add_node(fq)
 
-    # 2) Collect calls (caller→callee)
+    # 2) collect calls
     for path in find_py_files(root):
         try:
             src = open(path, encoding="utf-8").read()
@@ -46,15 +50,13 @@ def build_call_graph(root="."):
 
         for node in ast.walk(tree):
             if isinstance(node, ast.Call):
-                # extract simple name
+                fn = None
                 if isinstance(node.func, ast.Attribute):
                     fn = node.func.attr
                 elif isinstance(node.func, ast.Name):
                     fn = node.func.id
-                else:
+                if not fn:
                     continue
-
-                # link to any matching def
                 for fq in defs:
                     if fq.endswith(f".{fn}"):
                         G.add_edge(caller_node, fq)
@@ -63,7 +65,6 @@ def build_call_graph(root="."):
 
 def top_n_by_betweenness(G, n=5):
     bc = nx.betweenness_centrality(G)
-    # filter just the functions (i.e. nodes with a dot)
     funcs = {k: v for k, v in bc.items() if "." in k}
     return sorted(funcs.items(), key=lambda x: x[1], reverse=True)[:n]
 
