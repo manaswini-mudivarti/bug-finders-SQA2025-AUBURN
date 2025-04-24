@@ -24,7 +24,7 @@ jobs:
           python -m venv .venv
           . .venv/bin/activate
           pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install sarif-om jschema-to-python typer bandit ruamel.yaml networkx pandas
       - name: Run Bandit scan
         id: bandit
         continue-on-error: true
