@@ -11,7 +11,8 @@ jobs:
   test-and-fuzz:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -23,18 +24,15 @@ jobs:
           python -m venv .venv
           . .venv/bin/activate
           pip install --upgrade pip
-          pip install bandit networkx
+          pip install bandit networkx ruamel.yaml
 
-      - name: Run Bandit hook
+      - name: Run Bandit scan
+        id: bandit
+        continue-on-error: true
         run: |
           . .venv/bin/activate
-          # scan the entire repo (or change to $FILES logic if you prefer)
           bandit -r . -f csv -o bandit_report.csv
-          if [ -s bandit_report.csv ]; then
-            echo "❌ Bandit found issues! See bandit_report.csv"
-            cat bandit_report.csv
-            exit 1
-          fi
+          echo "failed=$( [ -s bandit_report.csv ] && echo true || echo false )" >> $GITHUB_OUTPUT
 
       - name: Compute fuzz targets
         run: |
@@ -46,8 +44,20 @@ jobs:
           . .venv/bin/activate
           python fuzz.py
 
-      - name: Upload fuzz report
+      - name: Upload Bandit report
         uses: actions/upload-artifact@v4
         with:
-          name: fuzz-csv
+          name: bandit-report
+          path: bandit_report.csv
+
+      - name: Upload Fuzz report
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-report
           path: fuzz.csv
+
+      - name: Fail if Bandit found issues
+        if: steps.bandit.outputs.failed == 'true'
+        run: |
+          echo "❌ Bandit issues detected—failing job."
+          exit 1
