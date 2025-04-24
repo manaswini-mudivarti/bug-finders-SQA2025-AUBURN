@@ -28,7 +28,13 @@ jobs:
       - name: Run Bandit hook
         run: |
           . .venv/bin/activate
-          sh .git/hooks/pre-commit
+          # scan the entire repo (or change to $FILES logic if you prefer)
+          bandit -r . -f csv -o bandit_report.csv
+          if [ -s bandit_report.csv ]; then
+            echo "❌ Bandit found issues! See bandit_report.csv"
+            cat bandit_report.csv
+            exit 1
+          fi
 
       - name: Compute fuzz targets
         run: |
