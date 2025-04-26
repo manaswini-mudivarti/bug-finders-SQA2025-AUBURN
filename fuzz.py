@@ -57,7 +57,7 @@ for fn_name in targets:
             result = None
         elapsed = int((time.time() - start) * 1_000)
 
-        # collect YAML‐specific fields if available
+        # collect YAML-specific fields if available
         sec = getattr(result, "security_finding", "")
         sev = getattr(result, "severity", "")
         vtype = getattr(result, "vulnerability_type", "")
@@ -97,4 +97,9 @@ with open("fuzz.csv", "w", newline="") as csvf:
     writer.writeheader()
     writer.writerows(rows)
 
-print("✅ fuzz.csv generated with", len(rows), "entries")
+# wrap the final print so a closed-stdout OSError won’t kill the script
+try:
+    print(f"✅ fuzz.csv generated with {len(rows)} entries")
+except OSError:
+    # stdout was already closed by the runner; ignore.
+    pass
